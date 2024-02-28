@@ -2,6 +2,7 @@ set(COMMON_LIB common_lib)
 
 set(SRCS
   lexer/lexer.cpp
+  lexer/nfa.cpp
   lexer/regex.cpp
   general.cpp
   mem.cpp

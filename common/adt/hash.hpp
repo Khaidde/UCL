@@ -20,6 +20,11 @@ struct HashFn<K *> {
 };
 
 template <>
+struct HashFn<i32> {
+  HashValue operator()(i32 num) { return num; }
+};
+
+template <>
 struct HashFn<cstr> {
   HashValue operator()(cstr ptr) {
     HashValue hash = 1;
@@ -40,6 +45,11 @@ struct EqualFn {
 template <typename K>
 struct EqualFn<K *> {
   bool operator()(K *ptr1, K *ptr2) { return ptr1 == ptr2; }
+};
+
+template <>
+struct EqualFn<i32> {
+  bool operator()(i32 num1, i32 num2) { return num1 == num2; }
 };
 
 template <>

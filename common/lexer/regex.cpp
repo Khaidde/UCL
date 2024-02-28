@@ -121,31 +121,18 @@ Result parse_infix(RegexParser *regex_parser, NFAComponent *lvalue, i32 min_prec
   return ok;
 }
 
-void gather_reachable_transitions(FAContext *fa_context, FANode *source, FANode *current_dfs) {
-  (void)fa_context;
-  (void)source;
-  (void)current_dfs;
-}
-
-Result generate_nfa(FAContext *fa_context, StringRef regex) {
+Node<FANode, FAEdge> *generate_nfa(FAContext *fa_context, u32 accept_token, StringRef regex) {
   RegexParser regex_parser;
   regex_parser.index      = 0;
   regex_parser.regex      = regex;
   regex_parser.fa_context = fa_context;
 
   NFAComponent result_nfa;
-  if (parse_infix(&regex_parser, &result_nfa, 0)) return err;
+  if (parse_infix(&regex_parser, &result_nfa, 0)) return nullptr;
 
-  // TODO: delete
-  fa_context->graph.nodes.get(result_nfa.exit_id)->data.accept_token = 555;
+  fa_context->graph.nodes.get(result_nfa.exit_id)->data.accept_token = accept_token;
 
-  // TODO: delete
-  auto post_ordering = fa_context->graph.post_order(&fa_context->bump_allocator);
-  for (auto *node : post_ordering) {
-    printf("-->%d\n", node->data.id);
-  }
-
-  return ok;
+  return fa_context->graph.nodes.get(result_nfa.entry_id);
 }
 
 } // namespace ucl

@@ -17,6 +17,9 @@ struct FANode {
 
   i32 id;
   u32 accept_token;
+  bool visited;
+
+  i32 reference_count;
 };
 
 struct FAEdge {
@@ -28,7 +31,11 @@ struct FAEdge {
 
 struct FAContext {
   BumpAllocator bump_allocator;
+
   Graph<FANode, FAEdge> graph;
+  Node<FANode, FAEdge> *entry_node;
+
+  Vec<Node<FANode, FAEdge> *> visited;
 };
 
 Result generate_lexer();

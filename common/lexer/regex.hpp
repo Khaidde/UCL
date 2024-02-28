@@ -7,7 +7,7 @@
 
 namespace ucl {
 
-Result generate_nfa(FAContext *fa_context, StringRef regex);
+Node<FANode, FAEdge> *generate_nfa(FAContext *fa_context, u32 accept_token, StringRef regex);
 
 } // namespace ucl
 

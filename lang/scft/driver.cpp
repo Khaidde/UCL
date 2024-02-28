@@ -1,4 +1,5 @@
 #include "common/adt/graph.hpp"
+#include "common/adt/map.hpp"
 #include "common/adt/string.hpp"
 #include "common/adt/vec.hpp"
 #include "common/general.hpp"
@@ -42,6 +43,17 @@ i32 main(i32 argc, cstr *argv) {
     for (auto *edge : node->edges) {
       printf(":-:%d==%d->%d\n", edge->cost, node->data, edge->dest->data);
     }
+  }
+
+  ucl::Map<i32, i32> test_map;
+  test_map.init();
+
+  for (i32 i = 0; i < 100; i += 8) {
+    test_map.insert(&alloc, i, i * 2);
+  }
+
+  for (i32 i = 0; i < 100; i += 8) {
+    printf("map:%d:%d\n", i, *test_map.get(i));
   }
 
   printf("Compiling %s...\n", argv[1]);

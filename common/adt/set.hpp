@@ -9,7 +9,7 @@ namespace ucl {
 
 namespace impl {
 
-// Robin hood algorithm based hashmap
+// Robin hood algorithm based hashtable
 template <typename T, typename H, typename E>
 struct Set {
   using Hash  = H;
@@ -126,20 +126,24 @@ struct Set {
       index = (index + 1) & (capacity - 1);
       ++distance;
     }
-    assert(!"Map is unexpectedly full");
+    panic("Hash table is unexpectedly full");
   }
 
-  bool has(T &data) {
+  T *get(T &data) {
     ASSERT_MEMCHECK
     i32 index = Hash()(data) & (capacity - 1);
     for (i32 off = 0; off < max_distance; ++off) {
-      if (table[index].distance && Equal()(table[index].data, data)) return true;
+      if (table[index].distance && Equal()(table[index].data, data)) return &table[index].data;
       index = (index + 1) & (capacity - 1);
     }
-    return false;
+    return nullptr;
   }
 
-  bool has(T &&data) { return has(data); }
+  T *get(T &&data) { return get(data); }
+
+  bool has(T &data) { return get(data); }
+
+  bool has(T &&data) { return get(data); }
 
   TableSlot *table;
   i32 length;

@@ -2,142 +2,63 @@
 #define COMMON_ADT_MAP_HPP
 
 #include "common/adt/hash.hpp"
+#include "common/adt/set.hpp"
 #include "common/general.hpp"
 #include "common/mem.hpp"
 
 namespace ucl {
 
-namespace impl {
+template <typename K, typename V>
+struct Entry {
+  K key;
+  V value;
+};
 
-// Robin hood algorithm based hashmap
-template <typename K, typename V, typename H, typename E>
+template <typename K, typename V>
+struct HashFn<Entry<K, V>> {
+  HashValue operator()(Entry<K, V> entry) { return HashFn<K>()(entry.key); }
+};
+
+template <typename K, typename V>
+struct EqualFn<Entry<K, V>> {
+  bool operator()(Entry<K, V> entry1, Entry<K, V> entry2) { return EqualFn<K>()(entry1.key, entry2.key); }
+};
+
+template <typename K, typename V>
 struct Map {
   using Key   = K;
   using Value = V;
-  using Hash  = H;
-  using Equal = E;
 
-  using MapT = Map<K, V, H, E>;
+  using EntryT = Entry<K, V>;
 
-  struct Entry {
-    Key key;
-    Value value;
-  };
-
-  struct Iterator {
-    Entry &operator*() const { return parent->table[index].entry; }
-
-    Entry *operator->() const { return &parent->table[index].entry; }
-
-    Iterator &operator++() {
-      index = parent->get_valid_entry_index(index + 1);
-      return *this;
-    }
-
-    friend bool operator==(const Iterator &it1, const Iterator &it2) {
-      assert(it1.parent == it2.parent);
-      return it1.index == it2.index;
-    }
-
-    friend bool operator!=(const Iterator &it1, const Iterator &it2) {
-      assert(it1.parent == it2.parent);
-      return it1.index != it2.index;
-    }
-
-    i32 index;
-    MapT *parent;
-  };
-
-  struct TableSlot {
-    Entry entry;
-    i32 distance; // Distance from preferred hash slot, distance=0 means entry is empty
-  };
+  using SetT = Set<EntryT>;
 
   void init() {
     INIT_MEMCHECK
-    capacity     = 0;
-    table        = nullptr;
-    length       = 0;
-    max_distance = 0;
-    clear();
+    set.init();
   }
 
   void clear() {
     ASSERT_MEMCHECK
-    length       = 0;
-    max_distance = 0;
-    memory_clear(table, capacity);
+    set.clear();
   }
 
-  i32 get_valid_entry_index(i32 index) {
+  typename SetT::Iterator begin() {
     ASSERT_MEMCHECK
-    while (index < capacity && !table[index].distance) index++;
-    return index;
+    return set.begin();
   }
 
-  Iterator begin() {
+  typename SetT::Iterator end() {
     ASSERT_MEMCHECK
-    return {get_valid_entry_index(0), this};
-  }
-
-  Iterator end() {
-    ASSERT_MEMCHECK
-    return {capacity, this};
+    return set.end();
   }
 
   Value *insert(Allocator *allocator, Key &key, Value &value) {
-    ASSERT_MEMCHECK
-    // Load factor of 0.5
-    if (length + 1 > capacity >> 1) {
-      auto *old_table  = table;
-      i32 old_capacity = capacity;
-
-      capacity = capacity ? capacity << 1 : 8;
-
-      table = allocator->construct<TableSlot>(capacity);
-
-      clear();
-
-      for (i32 i = 0; i < old_capacity; ++i) {
-        if (old_table[i].distance) insert(allocator, old_table[i].entry.key, old_table[i].entry.value);
-      }
-    }
-
-    TableSlot temp_slot;
-    auto *key_pointer   = &key;
-    auto *value_pointer = &value;
-    i32 index           = Hash()(key) & (capacity - 1);
-    i32 distance        = 1;
-    for (i32 off = 0; off < capacity; ++off) {
-      if (table[index].distance == 0) {
-        if (distance > max_distance) max_distance = distance;
-
-        table[index].entry.key   = *key_pointer;
-        table[index].entry.value = *value_pointer;
-        table[index].distance    = distance;
-        ++length;
-        return nullptr;
-      }
-
-      if (Equal()(table[index].entry.key, *key_pointer)) return &table[index].entry.value;
-
-      if (table[index].distance < distance) {
-        if (distance > max_distance) max_distance = distance;
-
-        temp_slot = table[index];
-
-        table[index].entry.key   = *key_pointer;
-        table[index].entry.value = *value_pointer;
-        table[index].distance    = distance;
-
-        key_pointer   = &temp_slot.entry.key;
-        value_pointer = &temp_slot.entry.value;
-        distance      = temp_slot.distance;
-      }
-      index = (index + 1) & (capacity - 1);
-      ++distance;
-    }
-    assert(!"Map is unexpectedly full");
+    EntryT entry;
+    entry.key    = key;
+    entry.value  = value;
+    auto *result = set.insert(allocator, entry);
+    return result ? &result->value : nullptr;
   }
 
   Value *insert(Allocator *allocator, Key &&key, Value &val) { return insert(allocator, key, val); }
@@ -147,28 +68,17 @@ struct Map {
   Value *insert(Allocator *allocator, Key &&key, Value &&val) { return insert(allocator, key, val); }
 
   Value *get(Key &key) {
-    ASSERT_MEMCHECK
-    i32 index = Hash()(key) & (capacity - 1);
-    for (i32 off = 0; off < max_distance; ++off) {
-      if (table[index].distance && Equal()(table[index].entry.key, key)) return &table[index].entry.value;
-      index = (index + 1) & (capacity - 1);
-    }
-    return nullptr;
+    EntryT entry;
+    entry.key  = key;
+    auto *data = set.get(entry);
+    return data ? &data->value : nullptr;
   }
 
   Value *get(Key &&key) { return get(key); }
 
-  TableSlot *table;
-  i32 length;
-  i32 capacity;
-  i32 max_distance;
+  SetT set;
   DEFINE_MEMCHECK
 };
-
-} // namespace impl
-
-template <typename K, typename V>
-using Map = impl::Map<K, V, HashFn<K>, EqualFn<K>>;
 
 } // namespace ucl
 
